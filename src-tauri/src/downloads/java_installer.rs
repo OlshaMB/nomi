@@ -18,19 +18,24 @@ const portable_url: &str = "https://download.oracle.com/java/17/archive/jdk-17.0
 const jdk_17_0_7_installer_sha256: &str = "f41cfb7fd675f9f74b76217a2c0940b76f4676f053fddb62a464eacffa4a773b";
 const jdk_17_0_7_portable_sha256: &str = "c08fe96bc1af1b500ccbe7225475896d6859f66aa45e7c86e69906161b8cbaca";
 
+// TODO: fix warnings
 impl JavaInstaller {
     async fn download_shit(
         &self,
         temporary_dir_path: &PathBuf, 
         file_name: &str,
-    ) -> Result<(), std::io::Error>{
-        let mut file = File::create(temporary_dir_path.join(file_name))?;
-        spawn_blocking(move || { // TODO: remove expects
+    ) -> Result<(), JavaInstallerError>{
+        let mut file = File::create(temporary_dir_path.join(file_name)).map_err(|x| JavaInstallerError::IoError(x))?;
+        spawn_blocking(move || -> Result<(), JavaInstallerError<'static>> { // TODO: remove expects
             blocking::get(installer_url)
-                .expect("Failed to get java shit from site")
+                .map_err(|x| JavaInstallerError::ReqwestError(x))?
                 .copy_to(&mut file)
-                .expect("Failed to copy java shit into a file")
-            }).await;
+                .map_err(|x| JavaInstallerError::ReqwestError(x))?;
+                Ok(())
+            })
+                .await
+                .map_err(|x| JavaInstallerError::TokioJoinError(x))?
+                .expect("fuck me im sorry"); // TODO!!: remove this unwrap
         return Ok(());
     }
 
@@ -51,8 +56,8 @@ impl JavaInstaller {
     ) -> Result<(), JavaInstallerError> {
         let installer_file_name = "java_installer.exe";
 
-        self.download_shit(&temporary_dir_path, &installer_file_name).await;
-        self.check_hash(&temporary_dir_path.join(&installer_file_name), jdk_17_0_7_installer_sha256);
+        self.download_shit(&temporary_dir_path, &installer_file_name).await?;
+        self.check_hash(&temporary_dir_path.join(&installer_file_name), jdk_17_0_7_installer_sha256)?;
         
         let path = {
             let joined_path = temporary_dir_path.join(&installer_file_name);
@@ -71,7 +76,7 @@ impl JavaInstaller {
         java_dir_path: &Path,
     ) -> Result<(), JavaInstallerError> {
         let archive_filename = "java_portable.zip";
-        self.download_shit(&temporary_dir_path, archive_filename).await;
+        self.download_shit(&temporary_dir_path, archive_filename).await?;
 
         self.check_hash(&temporary_dir_path.join(archive_filename), jdk_17_0_7_portable_sha256)?;
 
@@ -88,6 +93,8 @@ impl JavaInstaller {
     }
 }
 
+// TODO!: rewrite with thiserror
+#[derive(Debug)]
 enum JavaInstallerError<'a> {
     PathToStrConvertationError,
     HashDoesNotMatch,
@@ -95,4 +102,7 @@ enum JavaInstallerError<'a> {
     Sha256Error(<&'a std::path::Path as sha256::TrySha256Digest>::Error),
     ZipExtractionError(zip_extract::ZipExtractError),
     FsError(),
+    IoError(std::io::Error),
+    ReqwestError(reqwest::Error),
+    TokioJoinError(tokio::task::JoinError),
 }
