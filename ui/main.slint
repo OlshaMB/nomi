@@ -11,21 +11,10 @@ export global State {
     in-out property <string> query;
     callback launch(string);
 }
-export component CreateWindow inherits PopupWindow {
-    VerticalBox {
-        Text {
-            text: "Text";
-        }
-        TextEdit {
 
-        }
-    }
-}
 export component MainWindow inherits Window {
     default-font-size: 16px;
-    createWindow := CreateWindow {
-        
-    }
+    
     VerticalBox {
         HorizontalBox {
             Text {
@@ -50,7 +39,7 @@ export component MainWindow inherits Window {
             }
             Button {
                 clicked => {
-                    createWindow.show();
+
                 }
                 text: "Create";
             }
