@@ -1,4 +1,4 @@
-import { VerticalBox , HorizontalBox, Button} from "std-widgets.slint";
+import { VerticalBox , HorizontalBox, Button, TextEdit} from "std-widgets.slint";
 
 struct Profile {
     id: string,
@@ -9,11 +9,23 @@ struct Profile {
 export global State {
     in property <[Profile]> profiles: [{id: "aaaaaaaa", version: "1.20.1", name: "AAA", loader: "Vanilla"}];
     in-out property <string> query;
+    callback launch(string);
 }
-    
+export component CreateWindow inherits PopupWindow {
+    VerticalBox {
+        Text {
+            text: "Text";
+        }
+        TextEdit {
+
+        }
+    }
+}
 export component MainWindow inherits Window {
     default-font-size: 16px;
-
+    createWindow := CreateWindow {
+        
+    }
     VerticalBox {
         HorizontalBox {
             Text {
@@ -35,6 +47,12 @@ export component MainWindow inherits Window {
                     width: 300px;
                     single-line: true;
                 }
+            }
+            Button {
+                clicked => {
+                    createWindow.show();
+                }
+                text: "Create";
             }
         }
         Rectangle {
@@ -60,6 +78,9 @@ export component MainWindow inherits Window {
                         }
                         //TODO: Replace with custom play button
                         Button {
+                            clicked =>{
+                                State.launch(profile.id)
+                            }
                             width: 40px;
                             height: 40px;
                             icon: @image-url("../resources/icons/play.png");
